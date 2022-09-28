@@ -3,7 +3,7 @@
 set -u -x -o pipefail
 
 # Remove the directory or set to empty string to use a local goal install.
-SB=~/sandbox/sandbox
+SB=~/dev/sandbox/sandbox
 # Set an account to use, otherwise the first account in goal will be used.
 # If you're running this script and it's failing setting a creator, set it
 # manullay here.

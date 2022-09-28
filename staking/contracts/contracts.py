@@ -106,7 +106,7 @@ def calculate_rewards(addr: Expr) -> Expr:
 
         # Calculate time since last updated
         (rewards := ScratchVar()).store(
-            App.localGet(addr, Bytes("AS")) * duration.load() / Int(31557600) * App.globalGet(Bytes("FR")) / Int(10000)
+            App.localGet(addr, Bytes("AS")) * duration.load() / Int(31557600) * App.globalGet(Bytes("FR")) / Int(10000) # Minor:  The hard-coded values might be easier to interpret as a named constant.
         ),
 
         # Remove rewards from global
@@ -129,10 +129,10 @@ router = Router(
     ),
 )
 
-@router.method(no_op=CallConfig.ALL, opt_in=CallConfig.ALL)
+@router.method(no_op=CallConfig.ALL, opt_in=CallConfig.ALL) # Can the permissiveness be tightened without sacrificing desired behaviors by replacing `CallConfig.ALL` with `CallConfig.CALL`?
 def deposit(
     axfer: abi.AssetTransferTransaction,
-    asset: abi.Asset
+    asset: abi.Asset # `asset` is unused.  Can it be removed?
 ) -> Expr:
     """Deposit adds an amount of staked assets to the pool, increasing the
     senders share of the rewards."""
@@ -142,13 +142,18 @@ def deposit(
 
         # Confirm sender for this appl and the axfer are the same
         # Note: Do we need to care if it came from the same address?
+        # Responding to _Note_:  Feels like _yes_.  Worth a verbal for me to better understand the tradeoffs.
         Assert(axfer.get().sender() == Txn.sender()),
 
         # Check the staking asset is being received by the smart contract
         Assert(axfer.get().asset_receiver() == Global.current_application_address()),
 
+        # Correctness:  There's no check to confirm `axfer` asset ID == `SA`.
+
         # Calculate rewards
         calculate_rewards(Txn.sender()),
+
+        # Visual reminder to circle back:  Since local state stores rewards state, is it possible for the user to receive extra rewards by clearing local state?
 
         # Add deposit to users local state
         App.localPut(
@@ -232,6 +237,8 @@ def deploy(
         Approve(),
     )
 
+# * Correctness:  `init` does _not_ validate `staking` and `reward` match the corresponding global state values.
+# * Correctness:  What is the desired behavior when `init` is invoked > 1 time?  It's unclear if the app account's min balance _should_ be increased or if subsequent invocations ought to be rejected.
 @router.method
 def init(
     pay: abi.PaymentTransaction,
@@ -270,13 +277,13 @@ def init(
 def reward(
     rewards: abi.AssetTransferTransaction,
     fixed_rate: abi.Uint64,
-    reward: abi.Asset
+    reward: abi.Asset # Request for clarification:  Since `reward` is unused, can it be removed?
 ) -> Expr:
     """Primarily used to supply the initial rewards for the staking contract,
     but can also be used to add additional rewards before the contract ends."""
     return Seq(
         # Check previous transaction is of type axfer
-        Assert(rewards.get().type_enum() == TxnType.AssetTransfer),
+        Assert(rewards.get().type_enum() == TxnType.AssetTransfer), # Request for feedback:  Since the method signature already requires an asset transfer, is the check duplicative or still prudent?
 
         # Check receiver of asset transfer is this smart contract
         Assert(rewards.get().asset_receiver() == Global.current_application_address()),
