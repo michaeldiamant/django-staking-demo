@@ -175,7 +175,7 @@ def deposit(
         Approve(),
     )
 
-@router.method(no_op=CallConfig.ALL, close_out=CallConfig.ALL)
+@router.method(no_op=CallConfig.ALL, close_out=CallConfig.ALL) # Can the permissiveness be tightened without sacrificing desired behaviors by replacing `CallConfig.ALL` with `CallConfig.CALL`?
 def withdraw(
     asset: abi.Asset,
     amount: abi.Uint64,
@@ -190,7 +190,7 @@ def withdraw(
         calculate_rewards(Txn.sender()),
 
         # Send asset to recipient
-        send_asset(asset, amount, recipient),
+        send_asset(asset, amount, recipient), # Correctness: recipient is _not_ validated to be == `Txn.sender()`.
 
         # If it's a NoOp we can skip the closeout check
         If(Txn.on_completion() == OnComplete.CloseOut, Seq(
@@ -304,7 +304,7 @@ def reward(
 @router.method
 def config(
     paused: abi.Bool,
-    admin: abi.Account,
+    admin: abi.Account, # Correctness:  Can `admin` be removed?  It's _not_ validated and it appears the admin should already be set.
 ) -> Expr:
     return Seq(
         is_admin(),
